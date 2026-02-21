@@ -1,0 +1,418 @@
+// =============================================================
+// AI Agent Marketplace South Africa — Prisma Schema
+// Multi-tenant SaaS with RBAC, audit logging, and POPIA compliance
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================
+// ENUMS
+// =============================================================
+
+/// User roles for role-based access control
+enum Role {
+  ADMIN
+  DEVELOPER
+  BUSINESS_USER
+}
+
+/// Subscription lifecycle states
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+/// Agent approval workflow states
+enum AgentStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+/// Agent pricing model types
+enum PricingModel {
+  FREE
+  PER_EXECUTION
+  MONTHLY_FLAT
+  TIERED
+}
+
+/// Payment status tracking
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+/// Audit log action types
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXECUTE
+  LOGIN
+  LOGOUT
+  SUBSCRIBE
+  UNSUBSCRIBE
+  PAYMENT
+  APPROVAL
+  REJECTION
+  EXPORT_DATA
+  DELETE_DATA
+}
+
+/// Agent execution status
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+// =============================================================
+// TENANT — Multi-tenancy root
+// =============================================================
+
+/// Each business or organization is a tenant.
+/// All business data is isolated by tenantId.
+model Tenant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  /// Business registration number (optional, for enterprise)
+  regNumber   String?
+  industry    String?
+  plan        String   @default("free")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users         User[]
+  subscriptions Subscription[]
+  agentUsages   AgentExecution[]
+  auditLogs     AuditLog[]
+  reviews       Review[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+// =============================================================
+// USER — Linked to Clerk, scoped to Tenant
+// =============================================================
+
+/// Users are synced from Clerk. Each user belongs to a tenant
+/// and has a role that determines their access level.
+model User {
+  id            String   @id @default(cuid())
+  /// Clerk user ID for auth sync
+  clerkId       String   @unique
+  email         String
+  firstName     String?
+  lastName      String?
+  role          Role     @default(BUSINESS_USER)
+  tenantId      String
+  /// POPIA: tracks whether user has given data processing consent
+  popiaConsent  Boolean  @default(false)
+  consentDate   DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agents        Agent[]        @relation("AgentDeveloper")
+  executions    AgentExecution[]
+  reviews       Review[]
+  auditLogs     AuditLog[]
+  subscriptions Subscription[]
+
+  @@unique([tenantId, email])
+  @@index([clerkId])
+  @@index([tenantId])
+  @@index([email])
+  @@index([role])
+}
+
+// =============================================================
+// AGENT — The core marketplace product
+// =============================================================
+
+/// AI Agents are external HTTP services listed on the marketplace.
+/// Developers create them; businesses subscribe and execute them.
+model Agent {
+  id                String       @id @default(cuid())
+  name              String
+  slug              String       @unique
+  description       String
+  /// Long-form description with markdown support
+  longDescription   String?
+  /// URL to agent's icon/logo
+  iconUrl           String?
+  category          String
+  tags              String[]     @default([])
+  /// Developer who created this agent
+  developerId       String
+  /// Nullable: null means public/marketplace-wide agent
+  tenantId          String?
+  /// JSON Schema defining required inputs
+  inputSchema       Json
+  /// JSON Schema defining expected outputs
+  outputSchema      Json
+  /// URL to call when executing the agent
+  executionEndpoint String
+  /// How this agent is priced
+  pricingModel      PricingModel @default(FREE)
+  /// Price in ZAR cents (e.g., 2999 = R29.99)
+  priceInCents      Int          @default(0)
+  /// Approval status for marketplace listing
+  status            AgentStatus  @default(DRAFT)
+  /// Reason for rejection (if applicable)
+  rejectionReason   String?
+  /// Semver version string
+  version           String       @default("1.0.0")
+  /// Whether the agent is publicly visible
+  isPublished       Boolean      @default(false)
+  /// Average rating (cached for performance)
+  averageRating     Float        @default(0)
+  /// Total number of executions (cached)
+  totalExecutions   Int          @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  // Relations
+  developer         User             @relation("AgentDeveloper", fields: [developerId], references: [id])
+  executions        AgentExecution[]
+  reviews           Review[]
+  subscriptionItems SubscriptionItem[]
+
+  @@index([slug])
+  @@index([developerId])
+  @@index([developerId, status])
+  @@index([category])
+  @@index([status])
+  @@index([isPublished])
+  @@index([pricingModel])
+}
+
+// =============================================================
+// SUBSCRIPTION — Business subscribes to the platform
+// =============================================================
+
+/// Tracks a business's subscription to the marketplace.
+/// Lifecycle: trial → active → past_due → canceled
+model Subscription {
+  id                  String             @id @default(cuid())
+  tenantId            String
+  userId              String
+  /// PayFast subscription token
+  payfastToken        String?
+  /// Current lifecycle status
+  status              SubscriptionStatus @default(TRIAL)
+  /// Plan identifier (maps to pricing tiers)
+  planId              String
+  /// Monthly price in ZAR cents
+  priceInCents        Int
+  /// Trial end date
+  trialEndsAt         DateTime?
+  /// Current billing period start
+  currentPeriodStart  DateTime           @default(now())
+  /// Current billing period end
+  currentPeriodEnd    DateTime
+  /// When the subscription was canceled (null if active)
+  canceledAt          DateTime?
+  /// Reason for cancellation
+  cancelReason        String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  // Relations
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                User               @relation(fields: [userId], references: [id])
+  payments            Payment[]
+  items               SubscriptionItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([userId])
+  @@index([status])
+  @@index([payfastToken])
+}
+
+// =============================================================
+// SUBSCRIPTION ITEM — Individual agents in a subscription
+// =============================================================
+
+/// Tracks which agents are included in a subscription.
+model SubscriptionItem {
+  id              String       @id @default(cuid())
+  subscriptionId  String
+  agentId         String
+  /// Price of this specific agent in ZAR cents
+  priceInCents    Int          @default(0)
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  agent           Agent        @relation(fields: [agentId], references: [id])
+
+  @@unique([subscriptionId, agentId])
+  @@index([subscriptionId])
+  @@index([agentId])
+}
+
+// =============================================================
+// PAYMENT — Financial transaction records
+// =============================================================
+
+/// Records every payment transaction for audit and reconciliation.
+/// All amounts in ZAR cents.
+model Payment {
+  id                String        @id @default(cuid())
+  subscriptionId    String
+  /// Amount in ZAR cents
+  amountInCents     Int
+  /// PayFast payment ID
+  payfastPaymentId  String?       @unique
+  /// Platform commission in ZAR cents (20%)
+  commissionInCents Int           @default(0)
+  status            PaymentStatus @default(PENDING)
+  /// Whether this payment has been server-verified via PayFast ITN
+  isVerified        Boolean       @default(false)
+  /// PayFast ITN raw payload for audit
+  itnPayload        Json?
+  /// Payment method used
+  paymentMethod     String?
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relations
+  subscription      Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([payfastPaymentId])
+  @@index([paidAt])
+}
+
+// =============================================================
+// REVIEW — Agent ratings and reviews
+// =============================================================
+
+/// Business users can rate and review agents they've used.
+model Review {
+  id        String   @id @default(cuid())
+  agentId   String
+  userId    String
+  tenantId  String
+  /// Rating 1-5
+  rating    Int
+  /// Optional review text
+  comment   String?
+  /// Whether review is visible (moderation)
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// One review per user per agent
+  @@unique([agentId, userId])
+  @@index([agentId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([rating])
+}
+
+// =============================================================
+// AGENT EXECUTION — Execution log for every agent run
+// =============================================================
+
+/// Logs every agent execution for metering, billing, and debugging.
+model AgentExecution {
+  id              String          @id @default(cuid())
+  agentId         String
+  userId          String
+  tenantId        String
+  /// Input payload sent to the agent
+  inputPayload    Json
+  /// Output payload received from the agent
+  outputPayload   Json?
+  /// Execution status
+  status          ExecutionStatus @default(PENDING)
+  /// Execution time in milliseconds
+  executionTimeMs Int?
+  /// Cost of this execution in ZAR cents
+  costInCents     Int             @default(0)
+  /// Error message if failed
+  errorMessage    String?
+  /// HTTP status code from agent endpoint
+  httpStatusCode  Int?
+  createdAt       DateTime        @default(now())
+  completedAt     DateTime?
+
+  // Relations
+  agent           Agent           @relation(fields: [agentId], references: [id])
+  user            User            @relation(fields: [userId], references: [id])
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// =============================================================
+// AUDIT LOG — POPIA compliance & security audit trail
+// =============================================================
+
+/// Immutable audit trail for all sensitive operations.
+/// Required for POPIA compliance and security monitoring.
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  tenantId    String?
+  action      AuditAction
+  /// The database entity type affected (e.g., "Agent", "Subscription")
+  entityType  String
+  /// The ID of the affected entity
+  entityId    String?
+  /// Additional context as JSON
+  metadata    Json?
+  /// IP address of the request
+  ipAddress   String?
+  /// User agent string
+  userAgent   String?
+  createdAt   DateTime    @default(now())
+
+  // Relations
+  user        User?       @relation(fields: [userId], references: [id])
+  tenant      Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Audit logs are append-only — no updatedAt
+  @@index([userId])
+  @@index([tenantId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
