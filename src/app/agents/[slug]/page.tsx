@@ -135,7 +135,7 @@ export default async function AgentDetailPage({ params }: PageProps) {
           <Separator />
 
           {/* Reviews */}
-          <AgentReviews agentId={agent.id} initialData={initialReviewData} />
+          <AgentReviews agentId={agent.id} initialData={initialReviewData} isAuthenticated={!!session} />
         </div>
 
         {/* Sidebar — pricing & stats */}
@@ -155,6 +155,7 @@ export default async function AgentDetailPage({ params }: PageProps) {
                 agentId={agent.id}
                 agentName={agent.name}
                 inputSchema={agent.inputSchema as Record<string, unknown>}
+                isAuthenticated={!!session}
               />
             </CardContent>
           </Card>

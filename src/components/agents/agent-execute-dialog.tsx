@@ -25,6 +25,8 @@ interface AgentExecuteDialogProps {
   agentId: string;
   agentName: string;
   inputSchema: Record<string, unknown>;
+  /** Server-verified: user has a valid DB session */
+  isAuthenticated?: boolean;
 }
 
 interface ExecutionResponse {
@@ -47,6 +49,7 @@ export function AgentExecuteDialog({
   agentId,
   agentName,
   inputSchema,
+  isAuthenticated,
 }: AgentExecuteDialogProps) {
   const [open, setOpen] = useState(false);
   const [inputJson, setInputJson] = useState(
@@ -99,12 +102,21 @@ export function AgentExecuteDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full" size="lg">
-          <Play className="mr-2 h-4 w-4" />
-          Execute Agent
+      {isAuthenticated ? (
+        <DialogTrigger asChild>
+          <Button className="w-full" size="lg">
+            <Play className="mr-2 h-4 w-4" />
+            Execute Agent
+          </Button>
+        </DialogTrigger>
+      ) : (
+        <Button className="w-full" size="lg" variant="outline" asChild>
+          <a href="/sign-in">
+            <Play className="mr-2 h-4 w-4" />
+            Sign in to Execute
+          </a>
         </Button>
-      </DialogTrigger>
+      )}
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Execute {agentName}</DialogTitle>

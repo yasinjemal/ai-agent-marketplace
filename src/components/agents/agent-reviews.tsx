@@ -44,6 +44,8 @@ interface ReviewsResponse {
 interface AgentReviewsProps {
   agentId: string;
   initialData: ReviewsResponse;
+  /** Server-verified: user has a valid DB session (not just Clerk sign-in) */
+  isAuthenticated?: boolean;
 }
 
 // -------------------------------------------------------------
@@ -111,8 +113,9 @@ function RatingBar({ star, count, total }: { star: number; count: number; total:
 // Main Component
 // -------------------------------------------------------------
 
-export function AgentReviews({ agentId, initialData }: AgentReviewsProps) {
+export function AgentReviews({ agentId, initialData, isAuthenticated }: AgentReviewsProps) {
   const { isSignedIn } = useUser();
+  const canInteract = isAuthenticated ?? false;
   const [isPending, startTransition] = useTransition();
 
   const [data, setData] = useState(initialData);
@@ -155,7 +158,12 @@ export function AgentReviews({ agentId, initialData }: AgentReviewsProps) {
 
         const json = await res.json();
         if (!res.ok) {
-          toast.error(json.error?.message ?? "Failed to submit review");
+          const msg = res.status === 401
+            ? "Please sign in and complete onboarding first"
+            : res.status === 412
+              ? "You need to execute this agent before reviewing it"
+              : json.error?.message ?? "Failed to submit review";
+          toast.error(msg);
           return;
         }
 
@@ -210,8 +218,17 @@ export function AgentReviews({ agentId, initialData }: AgentReviewsProps) {
 
       <Separator />
 
-      {/* Review form (only for signed-in users) */}
-      {isSignedIn && (
+      {/* Review form (only for fully authenticated users with DB session) */}
+      {isSignedIn && !canInteract && (
+        <Card>
+          <CardContent className="pt-4">
+            <p className="text-sm text-muted-foreground">
+              Please complete onboarding to write reviews.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      {canInteract && (
         <Card>
           <CardContent className="space-y-3 pt-4">
             <p className="text-sm font-medium">
