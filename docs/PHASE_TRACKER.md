@@ -76,9 +76,28 @@
 - [x] Header nav updated (Executions link for authenticated users)
 - [x] Decisions D029–D034 documented
 
-## Phase 6: Growth Engine ⬅️ NEXT
-- [ ] Analytics dashboard
-- [ ] Referral system
-- [ ] Ratings & reviews
-- [ ] Usage-based billing
-- [ ] Email notifications
+## Phase 6: Growth Engine ✅ COMPLETE
+- [x] Analytics service (platform metrics, MRR, churn, conversion, top agents, trends)
+- [x] Analytics API route (GET /api/analytics — admin only)
+- [x] Admin analytics dashboard (/admin/analytics — KPI cards, revenue/execution charts, top agents)
+- [x] Review service (create/update, delete, moderate, rating recalculation)
+- [x] Review validation schemas (Zod — create + query)
+- [x] Review API routes (GET/POST /api/agents/[agentId]/reviews, DELETE/PATCH /api/reviews/[reviewId])
+- [x] Review UI component (star rating input, distribution bars, paginated list, create/edit/delete)
+- [x] Agent detail page updated (integrated AgentReviews component)
+- [x] Referral model added to Prisma schema + migration applied
+- [x] Referral service (code generation, apply, reward, stats, history)
+- [x] Referral API routes (GET/POST /api/referrals)
+- [x] Referral dashboard (/dashboard/referrals — share link, stats, history)
+- [x] Notification service (transport-agnostic email dispatch for key events)
+- [x] Types updated (ReviewListItem, ReviewSummary, ReferralListItem, ReferralDashboardData)
+- [x] Header nav updated (Analytics for admin, Referrals for all users)
+- [x] Decisions D035–D040 documented
+
+## Phase 7: Production Readiness ⬅️ NEXT
+- [ ] Error boundaries & loading states
+- [ ] SEO & Open Graph
+- [ ] Performance optimization
+- [ ] Security hardening
+- [ ] Monitoring & logging
+- [ ] CI/CD pipeline

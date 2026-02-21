@@ -1,7 +1,7 @@
 # Technical Decisions Log
 
 > **Last Updated:** 2026-02-21
-> **Phase:** 5 — Agent Execution Engine
+> **Phase:** 6 — Growth Engine
 
 ---
 
@@ -257,3 +257,45 @@ Each decision follows:
 - **Rationale:** Execution is the primary value action — it must be gated behind a subscription to drive conversions. Allowing TRIAL users to execute ensures they experience value before paying. The plan lookup happens once per request (not per retry) to minimize DB calls.
 - **Alternatives Considered:** No subscription check (no monetization gate), middleware-level check (too coarse — not all API routes need subscription), separate API key system (premature complexity).
 - **Status:** ✅ Active
+
+## D035 — Admin Analytics: Server-Side Aggregation
+
+- **Decision:** Platform analytics are computed server-side via Prisma aggregation queries (`count`, `aggregate`, `groupBy`). Metrics are fetched fresh on each admin page load — no materialized views or caching layer.
+- **Rationale:** With current scale, direct SQL aggregation is fast enough and avoids the complexity of maintaining cached/materialized metrics. The analytics service runs 10+ parallel queries using `Promise.all` for efficiency. Revenue trends loop through months and execution trends loop through days, which is acceptable for small datasets. At scale, switch to a data warehouse or materialized views.
+- **Alternatives Considered:** Materialized views in PostgreSQL (premature optimization), external analytics service like Mixpanel (vendor dependency), pre-computed daily rollup table (complex, not needed yet).
+- **Status:** ✅ Active (direct aggregation; upgrade at scale)
+
+## D036 — Reviews: One Per User Per Agent with Upsert
+
+- **Decision:** Users can submit one review per agent (enforced by `@@unique([agentId, userId])` in Prisma). Subsequent submissions update the existing review rather than creating duplicates. Users must have at least one successful execution before reviewing.
+- **Rationale:** One-review-per-user prevents rating manipulation and spam. The execution prerequisite ensures only genuine users who've tried the agent can review it. The upsert pattern (check existing → update or create) is simpler than separate create/update endpoints. Agent `averageRating` is recalculated on every review change using `aggregate._avg`.
+- **Alternatives Considered:** Allow multiple reviews per user (spam risk), separate update endpoint (more API surface), no execution prerequisite (fake reviews), batch rating recalculation via cron (stale ratings).
+- **Status:** ✅ Active
+
+## D037 — Review Moderation: Soft Visibility Toggle
+
+- **Decision:** Reviews have an `isVisible` boolean field (default true). Admins can hide inappropriate reviews via PATCH without deleting them. Hidden reviews are excluded from public queries and rating calculations.
+- **Rationale:** Soft-delete/hide preserves the review for audit purposes while removing it from public view. This is POPIA-compliant — we retain the record but don't display it. Rating recalculation only includes visible reviews, ensuring hidden reviews don't affect agent scores.
+- **Alternatives Considered:** Hard delete (loses audit trail), flagging system with user reports (complex), AI content moderation (expensive, overkill for MVP).
+- **Status:** ✅ Active
+
+## D038 — Referral System: Code-Based with R50 Credit Reward
+
+- **Decision:** Each tenant gets a unique referral code (format: `REF-XXXXXXXX`). When a new tenant signs up using the code and upgrades to a paid plan, both parties earn R50 (5000 cents) in credit. Referral codes are one-use (one referred tenant per code instance).
+- **Rationale:** Code-based referrals are simple to implement and share. The R50 reward aligns with SA market expectations (enough to be meaningful, not enough to be exploitable). One-use codes prevent abuse. The reward is triggered on paid upgrade (not just sign-up) to ensure quality referrals. Nanoid generates URL-safe, collision-resistant codes.
+- **Alternatives Considered:** Link-based referrals with cookies (harder to track across devices), percentage-of-first-payment reward (complex billing integration), unlimited referral codes per tenant (abuse risk).
+- **Status:** ✅ Active
+
+## D039 — Notification Service: Transport-Agnostic Design
+
+- **Decision:** The notification service defines email payloads (to, subject, html, text) and dispatches them through a `sendEmail()` function that currently logs to console. The transport layer is designed to be swapped for SendGrid, Resend, or AWS SES without changing any caller code.
+- **Rationale:** Building the notification structure now (templates, triggers, user lookup) means the hard work is done. Swapping `console.log` for a real email API is a single-function change. All notification types (welcome, subscription, payment, agent approval/rejection, execution failure, referral reward) are already templated with HTML and plain text variants.
+- **Alternatives Considered:** Direct SendGrid integration (requires API key setup, costs money in dev), event-driven notification queue (overengineered), no notifications (poor UX).
+- **Status:** ✅ Active (console transport; swap for email provider in production)
+
+## D040 — Lightweight Charts: CSS-Based Bar Charts
+
+- **Decision:** The admin analytics dashboard uses lightweight CSS-based bar charts (div elements with dynamic height percentages) instead of a charting library.
+- **Rationale:** Zero additional bundle size. The charts are simple bar visualizations that communicate trends effectively without the 50-100KB cost of libraries like Recharts or Chart.js. The mini bar chart component is fully accessible with title attributes and responsive. When richer visualizations are needed (line charts, tooltips, drill-downs), upgrading to Recharts is straightforward.
+- **Alternatives Considered:** Recharts (50KB gzipped, powerful but heavy for MVP), Chart.js (canvas-based, good perf but not React-native), Tremor (opinionated, large dependency tree).
+- **Status:** ✅ Active (upgrade to Recharts when needed)

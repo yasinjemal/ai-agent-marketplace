@@ -12,7 +12,7 @@ import {
   UserButton,
   useUser,
 } from "@clerk/nextjs";
-import { Bot, CreditCard, LayoutDashboard, Settings, Shield, Store, Tag, Zap } from "lucide-react";
+import { Bot, BarChart3, CreditCard, Gift, LayoutDashboard, Settings, Shield, Store, Tag, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -48,9 +48,21 @@ export function Header() {
       show: onboardingComplete && isSignedIn,
     },
     {
+      href: "/dashboard/referrals",
+      label: "Referrals",
+      icon: Gift,
+      show: onboardingComplete && isSignedIn,
+    },
+    {
       href: "/admin/agents",
       label: "Admin",
       icon: Shield,
+      show: onboardingComplete && role === "ADMIN",
+    },
+    {
+      href: "/admin/analytics",
+      label: "Analytics",
+      icon: BarChart3,
       show: onboardingComplete && role === "ADMIN",
     },
     {

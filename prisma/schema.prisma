@@ -107,6 +107,8 @@ model Tenant {
   agentUsages   AgentExecution[]
   auditLogs     AuditLog[]
   reviews       Review[]
+  referralsMade Referral[]   @relation("ReferralsMade")
+  referralUsed  Referral?    @relation("ReferralReceived")
 
   @@index([slug])
   @@index([isActive])
@@ -380,6 +382,35 @@ model AgentExecution {
   @@index([tenantId])
   @@index([status])
   @@index([createdAt])
+}
+
+// =============================================================
+// REFERRAL — Growth engine referral tracking
+// =============================================================
+
+/// Referral programme: tenants can invite others and earn rewards.
+model Referral {
+  id               String    @id @default(cuid())
+  /// The referral code (unique shareable string)
+  code             String    @unique
+  /// Tenant who owns the referral code
+  referrerTenantId String
+  /// Tenant who signed up using this code (null if unused)
+  referredTenantId String?   @unique
+  /// Whether the referral has been rewarded
+  isRewarded       Boolean   @default(false)
+  /// Reward amount in ZAR cents (e.g., 5000 = R50 credit)
+  rewardInCents    Int       @default(5000)
+  rewardedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  referrerTenant   Tenant    @relation("ReferralsMade", fields: [referrerTenantId], references: [id], onDelete: Cascade)
+  referredTenant   Tenant?   @relation("ReferralReceived", fields: [referredTenantId], references: [id])
+
+  @@index([referrerTenantId])
+  @@index([code])
 }
 
 // =============================================================

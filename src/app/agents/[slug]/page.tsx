@@ -14,6 +14,8 @@ import {
   Zap,
 } from "lucide-react";
 import { getAgentBySlug } from "@/lib/services/agent";
+import { getReviews, getUserReview } from "@/lib/services/review";
+import { getSession } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,19 +23,9 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatZAR } from "@/lib/utils";
 import { AgentExecuteDialog } from "@/components/agents/agent-execute-dialog";
+import { AgentReviews } from "@/components/agents/agent-reviews";
 
 type PricingModel = "FREE" | "PER_EXECUTION" | "MONTHLY_FLAT" | "TIERED";
-
-interface AgentReview {
-  id: string;
-  rating: number;
-  comment: string | null;
-  createdAt: Date;
-  user: {
-    firstName: string | null;
-    lastName: string | null;
-  };
-}
 
 type PageProps = { params: Promise<{ slug: string }> };
 
@@ -69,6 +61,18 @@ export default async function AgentDetailPage({ params }: PageProps) {
   if (!agent || agent.status !== "APPROVED" || !agent.isPublished) {
     notFound();
   }
+
+  // Fetch reviews and user review in parallel
+  const session = await getSession();
+  const [reviewsData, userReview] = await Promise.all([
+    getReviews(agent.id, { page: 1, limit: 10, sortBy: "newest" }),
+    session ? getUserReview(agent.id, session.userId) : Promise.resolve(null),
+  ]);
+
+  const initialReviewData = {
+    ...reviewsData,
+    userReview,
+  };
 
   const developerName = [agent.developer.firstName, agent.developer.lastName]
     .filter(Boolean)
@@ -131,52 +135,7 @@ export default async function AgentDetailPage({ params }: PageProps) {
           <Separator />
 
           {/* Reviews */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Reviews</h2>
-            {agent.reviews.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No reviews yet. Be the first to try this agent!
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {agent.reviews.map((review: AgentReview) => (
-                  <Card key={review.id}>
-                    <CardContent className="flex gap-3 pt-4">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs">
-                          {(review.user.firstName?.[0] ?? "") + (review.user.lastName?.[0] ?? "")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {review.user.firstName} {review.user.lastName}
-                          </span>
-                          <div className="flex items-center gap-0.5">
-                            {Array.from({ length: 5 }).map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-3 w-3 ${
-                                  i < review.rating
-                                    ? "fill-amber-400 text-amber-400"
-                                    : "text-muted-foreground"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        {review.comment && (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {review.comment}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+          <AgentReviews agentId={agent.id} initialData={initialReviewData} />
         </div>
 
         {/* Sidebar — pricing & stats */}

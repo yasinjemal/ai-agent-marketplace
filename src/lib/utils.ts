@@ -1,5 +1,11 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { nanoid as _nanoid } from "nanoid"
+
+/**
+ * Re-export nanoid for generating unique IDs.
+ */
+export const nanoid = _nanoid;
 
 /**
  * Merge Tailwind CSS classes with clsx.

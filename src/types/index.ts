@@ -97,8 +97,51 @@ export type DashboardStats = {
 };
 
 // =============================================================
-// PayFast Types
+// Review Types
 // =============================================================
+
+export type ReviewListItem = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: Date;
+  user: {
+    firstName: string | null;
+    lastName: string | null;
+  };
+};
+
+export type ReviewSummary = {
+  totalReviews: number;
+  averageRating: number;
+  distribution: Record<number, number>;
+};
+
+// =============================================================
+// Referral Types
+// =============================================================
+
+export type ReferralListItem = {
+  id: string;
+  code: string;
+  referredTenantId: string | null;
+  isRewarded: boolean;
+  rewardInCents: number;
+  rewardedAt: Date | null;
+  createdAt: Date;
+  referredTenant: {
+    name: string;
+    createdAt: Date;
+  } | null;
+};
+
+export type ReferralDashboardData = {
+  totalReferrals: number;
+  successfulReferrals: number;
+  pendingReferrals: number;
+  totalRewardsInCents: number;
+  referralCode: string;
+};
 
 // =============================================================
 // Execution Types
