@@ -1,7 +1,7 @@
 # Technical Decisions Log
 
-> **Last Updated:** 2026-02-21
-> **Phase:** 6 — Growth Engine
+> **Last Updated:** 2026-02-22
+> **Phase:** 7 — Production Readiness
 
 ---
 
@@ -299,3 +299,56 @@ Each decision follows:
 - **Rationale:** Zero additional bundle size. The charts are simple bar visualizations that communicate trends effectively without the 50-100KB cost of libraries like Recharts or Chart.js. The mini bar chart component is fully accessible with title attributes and responsive. When richer visualizations are needed (line charts, tooltips, drill-downs), upgrading to Recharts is straightforward.
 - **Alternatives Considered:** Recharts (50KB gzipped, powerful but heavy for MVP), Chart.js (canvas-based, good perf but not React-native), Tremor (opinionated, large dependency tree).
 - **Status:** ✅ Active (upgrade to Recharts when needed)
+
+---
+
+# Phase 7 — Production Readiness
+
+## D041 — Error Boundaries: Route-Segment Granularity
+
+- **Decision:** Create error.tsx and loading.tsx at global, /agents, /agents/[slug], /dashboard, and /admin route segments. Each error boundary shows a contextual message with a retry button. The global error.tsx catches anything unhandled.
+- **Rationale:** Next.js App Router error boundaries are scoped to route segments. Placing them at each major section gives users clear, contextual error messages ("Failed to load agents" vs generic "Something went wrong"). Loading skeletons match the layout of the content they replace for minimal layout shift.
+- **Alternatives Considered:** Single global error boundary only (less contextual), React ErrorBoundary library (not needed with App Router conventions), no loading states (poor UX).
+- **Status:** ✅ Active
+
+## D042 — SEO: sitemap.xml + robots.txt + JSON-LD
+
+- **Decision:** Generate sitemap.xml dynamically from the database (published agents). robots.txt blocks dashboard, admin, API, and auth routes. JSON-LD provides WebSite, Organization, and SoftwareApplication schemas.
+- **Rationale:** Dynamic sitemap ensures new agents are indexed quickly. robots.txt prevents crawling of private routes. JSON-LD enables rich results in Google (agent cards with ratings, pricing). All generated via Next.js metadata API — no external dependencies.
+- **Alternatives Considered:** Static sitemap (stale), next-sitemap package (unnecessary dependency), no structured data (miss rich results).
+- **Status:** ✅ Active
+
+## D043 — OG Image: Edge Runtime Generation
+
+- **Decision:** Generate a default Open Graph image using Next.js ImageResponse API (opengraph-image.tsx) on the Edge runtime. Shows brand name, tagline, and feature highlights.
+- **Rationale:** Dynamic OG images improve social sharing appearance without requiring a design tool. Edge runtime ensures fast generation globally. The image is auto-discovered by Next.js metadata system — no manual meta tag management.
+- **Alternatives Considered:** Static OG image (one-size-fits-all), per-agent OG images (complex, Phase 8), Cloudinary (external dependency).
+- **Status:** ✅ Active
+
+## D044 — Security Headers: next.config.ts
+
+- **Decision:** Apply security headers via next.config.ts headers() function: HSTS, X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy. Remove X-Powered-By header.
+- **Rationale:** Defense-in-depth. HSTS enforces HTTPS. X-Frame-Options prevents clickjacking. Permissions-Policy disables unnecessary browser APIs. These headers are free to add and significantly improve security posture. Applied at the Next.js level to cover all routes.
+- **Alternatives Considered:** Middleware-based headers (more complex), Vercel config (deployment-specific), helmet.js (Express only).
+- **Status:** ✅ Active
+
+## D045 — Structured Logger: JSON Output
+
+- **Decision:** Create a logger utility (logger.ts) that outputs structured JSON logs with level, timestamp, message, context, and optional error details. Log level controlled by LOG_LEVEL env var (defaults to "info" in production, "debug" in development).
+- **Rationale:** JSON logs are parseable by log aggregation services (Vercel Logs, Datadog, Axiom). Structured context (agentId, userId, duration) enables filtering and alerting. The logger is lightweight (zero dependencies) and can be adopted incrementally across the codebase.
+- **Alternatives Considered:** Winston (heavy), Pino (good but overkill for Next.js), console.log only (unparseable in production).
+- **Status:** ✅ Active
+
+## D046 — Health Check: /api/health
+
+- **Decision:** Create a public /api/health endpoint that checks database connectivity and returns system status (healthy/degraded), uptime, version, and latency.
+- **Rationale:** Required for monitoring, alerting, and load balancer health checks. The endpoint is force-dynamic (no caching) and returns 200 for healthy, 503 for degraded. Simple enough to not need authentication but useful enough to catch DB connection issues.
+- **Alternatives Considered:** No health check (blind monitoring), complex health checks with Redis/queue status (over-engineered for current stack).
+- **Status:** ✅ Active
+
+## D047 — CI/CD: GitHub Actions
+
+- **Decision:** Create a GitHub Actions workflow that runs lint, type-check (tsc --noEmit), and build on push to main/master and on pull requests. Uses dummy env vars for build step.
+- **Rationale:** Automated CI catches regressions before merge. The three-step pipeline (lint → typecheck → build) covers code quality, type safety, and build correctness. Concurrency control cancels in-progress runs on the same branch to save CI minutes. Dummy env vars allow the build to succeed without real secrets.
+- **Alternatives Considered:** Vercel preview builds only (no lint/typecheck), CircleCI (additional vendor), local-only checks (human error).
+- **Status:** ✅ Active

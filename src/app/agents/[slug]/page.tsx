@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatZAR } from "@/lib/utils";
 import { AgentExecuteDialog } from "@/components/agents/agent-execute-dialog";
 import { AgentReviews } from "@/components/agents/agent-reviews";
+import { SoftwareAppJsonLd } from "@/components/seo/json-ld";
 
 type PricingModel = "FREE" | "PER_EXECUTION" | "MONTHLY_FLAT" | "TIERED";
 
@@ -33,9 +34,23 @@ export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
   const agent = await getAgentBySlug(slug);
   if (!agent) return { title: "Agent Not Found" };
+
+  const title = `${agent.name} — AI Agent Marketplace`;
+  const description = agent.description;
+
   return {
-    title: `${agent.name} — AI Agent Marketplace`,
-    description: agent.description,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
   };
 }
 
@@ -78,8 +93,12 @@ export default async function AgentDetailPage({ params }: PageProps) {
     .filter(Boolean)
     .join(" ") || "Unknown Developer";
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://ai-agents.co.za";
+
   return (
     <div className="space-y-6">
+      <SoftwareAppJsonLd agent={agent as never} url={appUrl} />
+
       {/* Back link */}
       <Button variant="ghost" size="sm" asChild>
         <Link href="/agents">

@@ -15,6 +15,7 @@ const isPublicRoute = createRouteMatcher([
   "/agents(.*)",
   "/pricing",                // Public pricing page
   "/api/agents(.*)",         // Public GET for marketplace browsing
+  "/api/health",             // Health check endpoint (monitoring)
   "/api/webhooks(.*)",       // Clerk + PayFast webhooks must be public
 ]);
 
