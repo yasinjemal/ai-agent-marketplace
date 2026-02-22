@@ -22,16 +22,23 @@ export async function GET() {
   try {
     const session = await requireAuth();
 
-    const tenant = await db.tenant.findUnique({
-      where: { id: session.tenantId },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        createdAt: true,
-        _count: { select: { users: true, agents: true } },
-      },
-    });
+    const [tenant, agentCount] = await Promise.all([
+      db.tenant.findUnique({
+        where: { id: session.tenantId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          createdAt: true,
+          _count: { select: { users: true } },
+        },
+      }),
+      // Agent belongs to a developer (User), not Tenant directly.
+      // Count agents created by users in this tenant.
+      db.agent.count({
+        where: { developer: { tenantId: session.tenantId } },
+      }),
+    ]);
 
     if (!tenant) {
       return NextResponse.json(
@@ -42,8 +49,11 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: tenant,
-    } satisfies ApiResponse<typeof tenant>);
+      data: {
+        ...tenant,
+        _count: { ...tenant._count, agents: agentCount },
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
     if (message === "UNAUTHORIZED") {

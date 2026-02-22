@@ -18,7 +18,7 @@ interface TenantData {
   name: string;
   slug: string;
   createdAt: string;
-  _count: { users: number; agents: number };
+  _count: { users: number; agents?: number };
 }
 
 export function TenantSettingsForm() {
@@ -148,7 +148,7 @@ export function TenantSettingsForm() {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Agents</span>
-            <span className="font-medium">{tenant._count.agents}</span>
+            <span className="font-medium">{tenant._count.agents ?? 0}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Created</span>
