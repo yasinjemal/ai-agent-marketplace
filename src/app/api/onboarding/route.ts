@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     // Create tenant + user in a transaction
     // Note: Prisma v7 infers the transaction client type automatically
-    const result = await db.$transaction(async (tx: typeof db) => {
+    const result = await db.$transaction(async (tx) => {
       // Generate unique slug
       let slug = slugify(businessName);
       const existingTenant = await tx.tenant.findUnique({

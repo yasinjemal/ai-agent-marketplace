@@ -87,6 +87,10 @@ export default async function AgentDetailPage({ params }: PageProps) {
 
   const initialReviewData = {
     ...reviewsData,
+    reviews: reviewsData.reviews.map((r) => ({
+      ...r,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+    })),
     userReview,
   };
 

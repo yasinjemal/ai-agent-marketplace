@@ -83,6 +83,14 @@ enum ExecutionStatus {
   TIMEOUT
 }
 
+/// Team invite status (Phase 11)
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 // =============================================================
 // TENANT — Multi-tenancy root
 // =============================================================
@@ -110,6 +118,7 @@ model Tenant {
   referralsMade Referral[]   @relation("ReferralsMade")
   referralUsed  Referral?    @relation("ReferralReceived")
   apiKeys       ApiKey[]
+  teamInvites   TeamInvite[]
 
   @@index([slug])
   @@index([isActive])
@@ -133,6 +142,8 @@ model User {
   /// POPIA: tracks whether user has given data processing consent
   popiaConsent  Boolean  @default(false)
   consentDate   DateTime?
+  /// Email notification opt-out (Phase 9)
+  emailOptOut   Boolean  @default(false)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -144,6 +155,8 @@ model User {
   reviews       Review[]
   auditLogs     AuditLog[]
   subscriptions Subscription[]
+  agentVersions AgentVersion[] @relation("VersionCreator")
+  teamInvites   TeamInvite[]   @relation("InviteSender")
 
   @@unique([tenantId, email])
   @@index([clerkId])
@@ -203,6 +216,7 @@ model Agent {
   executions        AgentExecution[]
   reviews           Review[]
   subscriptionItems SubscriptionItem[]
+  versions          AgentVersion[]
 
   @@index([slug])
   @@index([developerId])
@@ -478,4 +492,71 @@ model AuditLog {
   @@index([action])
   @@index([entityType])
   @@index([createdAt])
+}
+
+// =============================================================
+// AGENT VERSION — Version history for agents (Phase 10)
+// =============================================================
+
+/// Stores a snapshot of agent configuration at each version.
+/// Allows developers to view history and roll back changes.
+model AgentVersion {
+  id                String   @id @default(cuid())
+  agentId           String
+  /// Semver version string (e.g. "1.0.0", "1.1.0")
+  version           String
+  /// Snapshot of agent config at this version
+  description       String
+  longDescription   String?
+  executionEndpoint String
+  inputSchema       Json
+  outputSchema      Json
+  pricingModel      PricingModel @default(FREE)
+  priceInCents      Int          @default(0)
+  /// Release notes / changelog for this version
+  changelog         String?
+  /// User who created this version
+  createdById       String
+  createdAt         DateTime @default(now())
+
+  // Relations
+  agent             Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  createdBy         User     @relation("VersionCreator", fields: [createdById], references: [id])
+
+  @@unique([agentId, version])
+  @@index([agentId])
+  @@index([createdAt])
+}
+
+// =============================================================
+// TEAM INVITE — Invite users to a tenant (Phase 11)
+// =============================================================
+
+/// Tracks team invitations sent by tenant members.
+model TeamInvite {
+  id          String       @id @default(cuid())
+  tenantId    String
+  /// Email address of the invited person
+  email       String
+  /// Role to assign upon acceptance
+  role        Role         @default(BUSINESS_USER)
+  /// Unique invite code for the acceptance link
+  code        String       @unique
+  status      InviteStatus @default(PENDING)
+  /// Who sent the invite
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedBy   User         @relation("InviteSender", fields: [invitedById], references: [id])
+
+  @@unique([tenantId, email])
+  @@index([code])
+  @@index([tenantId])
+  @@index([email])
+  @@index([status])
 }

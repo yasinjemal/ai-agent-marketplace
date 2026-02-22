@@ -137,3 +137,47 @@
 ---
 
 ## 🎉 PHASES 1–8 COMPLETE
+
+---
+
+## Phase 9: Email Integration (Resend) ✅ COMPLETE
+- [x] Install Resend SDK
+- [x] Add RESEND_API_KEY + FROM_EMAIL to env validation
+- [x] Resend client singleton (src/lib/resend.ts)
+- [x] 9 branded HTML email templates (src/lib/email-templates.ts)
+- [x] Wire sendEmail() transport to Resend API (console fallback if no key)
+- [x] emailOptOut field on User model (Prisma schema)
+- [x] Email preferences API (GET/PATCH /api/settings/email-preferences)
+- [x] Email preferences toggle on settings page
+- [x] All 8 notification functions + team invite notification
+
+## Phase 10: Agent Versioning UI ✅ COMPLETE
+- [x] AgentVersion model in Prisma schema + db push
+- [x] Version service (create snapshot, list history, get, rollback)
+- [x] Version API routes (GET list, POST create, POST rollback)
+- [x] Version history panel component (agent-version-panel.tsx)
+- [x] Version history dialog on developer agent list
+- [x] Rollback functionality with confirmation
+- [x] Create version dialog with semver + changelog
+
+## Phase 11: Team Management ✅ COMPLETE
+- [x] TeamInvite model + InviteStatus enum in Prisma schema + db push
+- [x] Team service (list members, list invites, send invite, accept, revoke, remove)
+- [x] Team API routes (GET/POST /api/team, DELETE member, DELETE invite, POST accept)
+- [x] Team management page (/dashboard/team — list members, invite, remove)
+- [x] Invite email notification (via Resend/notifyTeamInvite)
+- [x] Accept invite page (/accept-invite?code=xxx — validates + adds to tenant)
+- [x] Dashboard sidebar updated with Team link
+- [x] Role assignment on invite (Business User / Developer)
+
+## Phase 12: Dark Mode Toggle ✅ COMPLETE
+- [x] ThemeProvider (next-themes) wired into root layout
+- [x] Theme toggle component in header (sun/moon icon)
+- [x] System preference detection (defaultTheme="system")
+- [x] suppressHydrationWarning on html element
+- [x] CSS already had .dark variables (Shadcn default)
+- [x] Persist theme preference (localStorage via next-themes)
+
+---
+
+## 🎉 PHASES 1–12 COMPLETE

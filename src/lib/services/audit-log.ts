@@ -5,6 +5,7 @@
 // =============================================================
 
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import type { AuditAction } from "@prisma/client";
 
 interface AuditLogParams {
@@ -32,7 +33,7 @@ export async function createAuditLog(params: AuditLogParams): Promise<void> {
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId ?? null,
-        metadata: params.metadata ?? null,
+        metadata: (params.metadata as Prisma.InputJsonValue) ?? Prisma.JsonNull,
         ipAddress: params.ipAddress ?? null,
         userAgent: params.userAgent ?? null,
       },

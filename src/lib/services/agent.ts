@@ -48,8 +48,8 @@ export async function createAgent(
       tags: input.tags,
       developerId: ctx.userId,
       tenantId: ctx.tenantId,
-      inputSchema: input.inputSchema,
-      outputSchema: input.outputSchema,
+      inputSchema: input.inputSchema as Prisma.InputJsonValue,
+      outputSchema: input.outputSchema as Prisma.InputJsonValue,
       executionEndpoint: input.executionEndpoint,
       pricingModel: input.pricingModel,
       priceInCents: input.priceInCents,
@@ -282,8 +282,12 @@ export async function updateAgent(
   const needsReReview =
     existing.status === "APPROVED" || existing.status === "PENDING_REVIEW";
 
+  const { inputSchema, outputSchema, ...rest } = input;
+
   const updateData: Prisma.AgentUpdateInput = {
-    ...input,
+    ...rest,
+    ...(inputSchema ? { inputSchema: inputSchema as Prisma.InputJsonValue } : {}),
+    ...(outputSchema ? { outputSchema: outputSchema as Prisma.InputJsonValue } : {}),
     // Re-generate slug if name changed
     ...(input.name ? { slug: slugify(input.name) + "-" + Date.now().toString(36) } : {}),
     // Reset status if substantive edits on approved agent

@@ -6,6 +6,7 @@
 // =============================================================
 
 import { db } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { createAuditLog } from "@/lib/services/audit-log";
 import { SUBSCRIPTION_PLANS } from "@/constants";
 import type { PlanId } from "@/constants";
@@ -123,7 +124,7 @@ export async function createSubscription(
     : null;
   const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
-  const result = await db.$transaction(async (tx: typeof db) => {
+  const result = await db.$transaction(async (tx) => {
     // Create subscription
     const subscription = await tx.subscription.create({
       data: {
@@ -186,7 +187,7 @@ export async function confirmPayment(
   payfastToken: string | null,
   itnPayload: Record<string, unknown>,
 ) {
-  return db.$transaction(async (tx: typeof db) => {
+  return db.$transaction(async (tx) => {
     // Update payment record
     const payment = await tx.payment.update({
       where: { id: paymentId },
@@ -194,7 +195,7 @@ export async function confirmPayment(
         status: "COMPLETED",
         isVerified: true,
         payfastPaymentId,
-        itnPayload,
+        itnPayload: itnPayload as Prisma.InputJsonValue,
         paidAt: new Date(),
       },
     });
@@ -226,7 +227,7 @@ export async function recordRecurringPayment(
   amountInCents: number,
   itnPayload: Record<string, unknown>,
 ) {
-  return db.$transaction(async (tx: typeof db) => {
+  return db.$transaction(async (tx) => {
     // Create payment record
     const payment = await tx.payment.create({
       data: {
@@ -236,7 +237,7 @@ export async function recordRecurringPayment(
         status: "COMPLETED",
         isVerified: true,
         commissionInCents: Math.round(amountInCents * 0.2),
-        itnPayload,
+        itnPayload: itnPayload as Prisma.InputJsonValue,
         paidAt: new Date(),
       },
     });

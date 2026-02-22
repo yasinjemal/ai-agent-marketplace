@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import {
   Edit,
   Download,
+  History,
   Loader2,
   Plus,
   Send,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AgentCard, type AgentCardData } from "@/components/agents/agent-card";
 import { AgentFormDialog } from "./agent-form-dialog";
+import { AgentVersionPanel } from "./agent-version-panel";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,7 @@ export function DeveloperAgentList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<string | null>(null);
+  const [versionAgent, setVersionAgent] = useState<AgentCardData | null>(null);
 
   const fetchAgents = useCallback(async () => {
     setIsLoading(true);
@@ -196,6 +199,16 @@ export function DeveloperAgentList() {
                     Edit
                   </Button>
 
+                  {/* Versions */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setVersionAgent(agent)}
+                    title="Version History"
+                  >
+                    <History className="h-3 w-3" />
+                  </Button>
+
                   {/* Submit for review — only draft/rejected */}
                   {(agent.status === "DRAFT" || agent.status === "REJECTED") && (
                     <Button
@@ -299,6 +312,25 @@ export function DeveloperAgentList() {
               Delete
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Version history dialog */}
+      <Dialog open={!!versionAgent} onOpenChange={(open) => !open && setVersionAgent(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Version History — {versionAgent?.name}</DialogTitle>
+            <DialogDescription>
+              View version snapshots and roll back to a previous state.
+            </DialogDescription>
+          </DialogHeader>
+          {versionAgent && (
+            <AgentVersionPanel
+              agentId={versionAgent.id}
+              currentVersion={versionAgent.version ?? "1.0.0"}
+              onRollback={fetchAgents}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </>

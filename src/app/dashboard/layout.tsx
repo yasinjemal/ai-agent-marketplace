@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Menu,
   Settings,
+  Users,
   X,
   Zap,
 } from "lucide-react";
@@ -105,6 +106,12 @@ export default function DashboardLayout({
       href: "/dashboard/referrals",
       label: "Referrals",
       icon: Gift,
+      show: true,
+    },
+    {
+      href: "/dashboard/team",
+      label: "Team",
+      icon: Users,
       show: true,
     },
     {

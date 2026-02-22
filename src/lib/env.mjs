@@ -28,6 +28,13 @@ const serverSchema = z.object({
   PAYFAST_PASSPHRASE: z
     .string()
     .optional(),
+  RESEND_API_KEY: z
+    .string()
+    .optional(),
+  FROM_EMAIL: z
+    .string()
+    .email({ message: "FROM_EMAIL must be a valid email address" })
+    .default("noreply@aimarketplace.co.za"),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
@@ -63,6 +70,8 @@ function validateEnv() {
     PAYFAST_MERCHANT_ID: process.env.PAYFAST_MERCHANT_ID,
     PAYFAST_MERCHANT_KEY: process.env.PAYFAST_MERCHANT_KEY,
     PAYFAST_PASSPHRASE: process.env.PAYFAST_PASSPHRASE,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    FROM_EMAIL: process.env.FROM_EMAIL,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,

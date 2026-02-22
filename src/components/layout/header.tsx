@@ -14,6 +14,7 @@ import {
 } from "@clerk/nextjs";
 import { Bot, BarChart3, LayoutDashboard, Shield, Store, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export function Header() {
@@ -102,6 +103,7 @@ export function Header() {
 
         {/* Auth Controls */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {!isLoaded ? (
             <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
           ) : isSignedIn ? (

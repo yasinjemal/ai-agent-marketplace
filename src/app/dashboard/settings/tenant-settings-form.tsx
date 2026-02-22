@@ -5,7 +5,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Mail, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,6 +132,10 @@ export function TenantSettingsForm() {
 
       <Separator />
 
+      <EmailPreferencesCard />
+
+      <Separator />
+
       <Card>
         <CardHeader>
           <CardTitle>Tenant Info</CardTitle>
@@ -159,5 +163,102 @@ export function TenantSettingsForm() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// =============================================================
+// Email Preferences Card — Toggle email notifications
+// =============================================================
+
+function EmailPreferencesCard() {
+  const [emailOptOut, setEmailOptOut] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    async function fetchPrefs() {
+      try {
+        const res = await fetch("/api/settings/email-preferences");
+        const data = await res.json();
+        if (data.success) {
+          setEmailOptOut(data.data.emailOptOut);
+        }
+      } catch {
+        // fail silently, default to opted-in
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchPrefs();
+  }, []);
+
+  const handleToggle = async () => {
+    setIsSaving(true);
+    const newValue = !emailOptOut;
+    try {
+      const res = await fetch("/api/settings/email-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailOptOut: newValue }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmailOptOut(newValue);
+        toast.success(
+          newValue
+            ? "Email notifications disabled"
+            : "Email notifications enabled",
+        );
+      } else {
+        toast.error("Failed to update preference");
+      }
+    } catch {
+      toast.error("Network error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-5 w-5" />
+          Email Notifications
+        </CardTitle>
+        <CardDescription>
+          Control whether you receive email notifications from the platform.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        ) : (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">
+                {emailOptOut ? "Notifications disabled" : "Notifications enabled"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {emailOptOut
+                  ? "You won't receive email notifications for agent approvals, payments, etc."
+                  : "You'll receive emails about agent updates, payments, and important events."}
+              </p>
+            </div>
+            <Button
+              variant={emailOptOut ? "default" : "outline"}
+              size="sm"
+              onClick={handleToggle}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : null}
+              {emailOptOut ? "Enable" : "Disable"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

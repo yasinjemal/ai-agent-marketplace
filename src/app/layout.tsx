@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { ThemeProvider } from "@/components/theme-provider";
 import { WebSiteJsonLd, OrganizationJsonLd } from "@/components/seo/json-ld";
 import "./globals.css";
 
@@ -74,24 +75,31 @@ export default function RootLayout({
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
     >
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} flex min-h-dvh flex-col antialiased`}
         >
-          <WebSiteJsonLd
-            url={APP_URL}
-            name="AI Agent Marketplace SA"
-            description="AI automation built for South African SMEs"
-          />
-          <OrganizationJsonLd
-            url={APP_URL}
-            name="AI Agent Marketplace SA"
-            description="Discover and deploy AI agents built for South African SMEs."
-          />
-          <Header />
-          <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">{children}</main>
-          <Footer />
-          <Toaster richColors position="top-right" />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <WebSiteJsonLd
+              url={APP_URL}
+              name="AI Agent Marketplace SA"
+              description="AI automation built for South African SMEs"
+            />
+            <OrganizationJsonLd
+              url={APP_URL}
+              name="AI Agent Marketplace SA"
+              description="Discover and deploy AI agents built for South African SMEs."
+            />
+            <Header />
+            <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">{children}</main>
+            <Footer />
+            <Toaster richColors position="top-right" />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

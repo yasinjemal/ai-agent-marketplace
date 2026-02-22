@@ -52,7 +52,7 @@ export function AgentFormDialog({
   const [description, setDescription] = useState(agent?.description ?? "");
   const [category, setCategory] = useState(agent?.category ?? "");
   const [tags, setTags] = useState(agent?.tags.join(", ") ?? "");
-  const [pricingModel, setPricingModel] = useState(agent?.pricingModel ?? "FREE");
+  const [pricingModel, setPricingModel] = useState<string>(agent?.pricingModel ?? "FREE");
   const [priceInCents, setPriceInCents] = useState(
     agent ? String(agent.priceInCents / 100) : "0",
   );
