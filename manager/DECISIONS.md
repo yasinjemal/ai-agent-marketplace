@@ -352,3 +352,52 @@ Each decision follows:
 - **Rationale:** Automated CI catches regressions before merge. The three-step pipeline (lint → typecheck → build) covers code quality, type safety, and build correctness. Concurrency control cancels in-progress runs on the same branch to save CI minutes. Dummy env vars allow the build to succeed without real secrets.
 - **Alternatives Considered:** Vercel preview builds only (no lint/typecheck), CircleCI (additional vendor), local-only checks (human error).
 - **Status:** ✅ Active
+
+## D048 — OpenClaw SKILL.md Generator
+
+- **Decision:** Build a service (`src/lib/services/openclaw.ts`) that converts any approved marketplace agent into an OpenClaw-compatible SKILL.md file. Uses YAML frontmatter (name, description, version, metadata) plus markdown instruction body following the AgentSkills spec.
+- **Rationale:** OpenClaw is a 216k-star open-source personal AI assistant. Its skill system uses SKILL.md files for defining agent capabilities. By auto-generating these files from our agent data, we bridge the marketplace catalog to the OpenClaw ecosystem — enabling any marketplace agent to be used across WhatsApp, Telegram, Slack, Discord, and other channels.
+- **Alternatives Considered:** Manual SKILL.md authoring by developers (error-prone, low adoption), custom plugin format (no ecosystem compatibility), direct OpenClaw fork integration (too coupled).
+- **Status:** ✅ Active
+
+## D049 — API Key Authentication for External Integrations
+
+- **Decision:** Implement API key management with SHA-256 hashed storage. Keys use `mk_live_` prefix, 32 random bytes (hex-encoded), with first 12 chars stored as display prefix. Max 10 keys per tenant. Soft-delete revocation pattern.
+- **Rationale:** External systems (OpenClaw, Zapier, custom scripts) need to authenticate without Clerk sessions. API keys are the standard pattern — SHA-256 hashing means raw keys are never stored, the prefix enables identification without exposing the key, and soft-delete preserves audit trails. The 10-key limit prevents abuse while allowing dev/staging/prod separation.
+- **Alternatives Considered:** OAuth2 client credentials (over-engineered for current needs), JWT tokens (stateless but no revocation), Clerk API tokens (vendor lock-in for external callers).
+- **Status:** ✅ Active
+
+## D050 — Webhook Execution Bridge
+
+- **Decision:** Create a `/api/agents/[agentId]/webhook` POST endpoint that accepts API key auth (via `X-API-Key` or `Authorization: Bearer` header), validates the key, finds the target agent, creates an execution record, calls the agent's execution endpoint, and returns structured results.
+- **Rationale:** This bridge enables the "agent-as-a-service" model — any external system can execute marketplace agents via a simple HTTP POST. The webhook handles the full execution lifecycle: auth → validation → dispatch → tracking → response. It integrates with existing AgentExecution tracking and audit logs, ensuring webhook-triggered runs appear in dashboards alongside manual executions.
+- **Alternatives Considered:** Direct agent endpoint exposure (no auth/tracking), queue-based async execution (adds latency for synchronous use cases), WebSocket streams (complexity for simple request/response).
+- **Status:** ✅ Active
+
+## D051 — SKILL.md Export API
+
+- **Decision:** Add a GET endpoint at `/api/agents/[agentId]/export` that generates and returns the SKILL.md for an approved agent. Supports `?format=download` for file download (Content-Disposition attachment) or JSON response with the markdown content. Only the agent's developer or an admin can export.
+- **Rationale:** Developers need to download SKILL.md files to register their agents on ClawHub or include in their OpenClaw configurations. The dual-format support (download vs JSON) serves both human users (download button) and programmatic consumers (CI/CD pipelines).
+- **Alternatives Considered:** Client-side generation (no server data access), bulk export (over-engineered for v1), auto-publish to ClawHub (requires ClawHub API integration).
+- **Status:** ✅ Active
+
+## D052 — API Key Management UI
+
+- **Decision:** Build a full dashboard page at `/dashboard/api-keys` with create form, new key display dialog (shown only once), active keys table, and revoke confirmation. Uses shadcn/ui components consistent with existing dashboard patterns.
+- **Rationale:** Self-service key management is essential for developer experience. The "show once" pattern for raw keys follows security best practices (similar to GitHub, Stripe, AWS). The UI matches existing dashboard component patterns for consistency.
+- **Alternatives Considered:** CLI-only key generation (poor UX), settings page sub-section (too cramped for key management), external key management service (over-engineered).
+- **Status:** ✅ Active
+
+## D053 — OpenClaw Integration Badge
+
+- **Decision:** Add an "🦞 OpenClaw Ready" badge and expandable integration section to the agent detail page sidebar. Shows webhook URL, cURL test command, OpenClaw config snippet, and links to API key management and OpenClaw docs.
+- **Rationale:** Discoverability is key — users browsing agents need to know they can use them via OpenClaw. The expandable section keeps the sidebar clean while providing all setup information in one place. Copy buttons for webhook URL and cURL command reduce friction.
+- **Alternatives Considered:** Separate integration page per agent (too many pages), integration tab (hidden behind click), README-only docs (low discoverability).
+- **Status:** ✅ Active
+
+## D054 — Developer Dashboard Export Button
+
+- **Decision:** Add an "Export SKILL.md" button to the developer agent list for APPROVED agents. Downloads the generated SKILL.md file directly via the export API endpoint.
+- **Rationale:** Developers manage their agents from the dashboard — the export action belongs alongside Edit, Submit, and Delete. Only approved agents can be exported since draft/rejected agents shouldn't be published to external systems.
+- **Alternatives Considered:** Export from agent detail page only (developer may not visit public page), bulk export all agents (v2 feature), auto-export on approval (too aggressive).
+- **Status:** ✅ Active

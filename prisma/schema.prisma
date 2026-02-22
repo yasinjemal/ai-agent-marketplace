@@ -109,6 +109,7 @@ model Tenant {
   reviews       Review[]
   referralsMade Referral[]   @relation("ReferralsMade")
   referralUsed  Referral?    @relation("ReferralReceived")
+  apiKeys       ApiKey[]
 
   @@index([slug])
   @@index([isActive])
@@ -411,6 +412,37 @@ model Referral {
 
   @@index([referrerTenantId])
   @@index([code])
+}
+
+// =============================================================
+// API KEY — External access keys for OpenClaw / webhook integrations
+// =============================================================
+
+/// API keys allow external systems (e.g. OpenClaw) to call agent
+/// webhooks on behalf of a tenant. Keys are hashed for security.
+model ApiKey {
+  id          String    @id @default(cuid())
+  tenantId    String
+  /// Human-readable label (e.g. "OpenClaw Production")
+  label       String
+  /// SHA-256 hash of the key (never store plaintext)
+  keyHash     String    @unique
+  /// First 8 characters of the key for display (e.g. "mk_live_a1b2...")
+  keyPrefix   String
+  /// Last used timestamp
+  lastUsedAt  DateTime?
+  /// Optional expiry date
+  expiresAt   DateTime?
+  isRevoked   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([keyHash])
+  @@index([isRevoked])
 }
 
 // =============================================================

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   Edit,
+  Download,
   Loader2,
   Plus,
   Send,
@@ -44,6 +45,7 @@ export function DeveloperAgentList() {
   const [deleteTarget, setDeleteTarget] = useState<AgentCardData | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState<string | null>(null);
 
   const fetchAgents = useCallback(async () => {
     setIsLoading(true);
@@ -87,7 +89,38 @@ export function DeveloperAgentList() {
     }
   };
 
-  // Delete agent
+  // Export agent as OpenClaw SKILL.md
+  const handleExport = async (agentId: string) => {
+    setIsExporting(agentId);
+    try {
+      const res = await fetch(`/api/agents/${agentId}/export?format=download`);
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error?.message ?? "Export failed");
+        return;
+      }
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] ?? "SKILL.md";
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("SKILL.md exported successfully!");
+    } catch {
+      toast.error("Network error exporting agent");
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
+  // Delete agent — only draft/rejected
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -186,6 +219,24 @@ export function DeveloperAgentList() {
                     <Badge variant="outline" className="bg-amber-100 text-amber-800">
                       Under Review
                     </Badge>
+                  )}
+
+                  {/* Export as OpenClaw SKILL.md — only approved */}
+                  {agent.status === "APPROVED" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isExporting === agent.id}
+                      onClick={() => handleExport(agent.id)}
+                      title="Export as OpenClaw SKILL.md"
+                    >
+                      {isExporting === agent.id ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Download className="mr-1 h-3 w-3" />
+                      )}
+                      SKILL.md
+                    </Button>
                   )}
 
                   {/* Delete — only draft/rejected */}

@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatZAR } from "@/lib/utils";
 import { AgentExecuteDialog } from "@/components/agents/agent-execute-dialog";
 import { AgentReviews } from "@/components/agents/agent-reviews";
+import { OpenClawBadge } from "@/components/agents/openclaw-badge";
 import { SoftwareAppJsonLd } from "@/components/seo/json-ld";
 
 type PricingModel = "FREE" | "PER_EXECUTION" | "MONTHLY_FLAT" | "TIERED";
@@ -235,6 +236,9 @@ export default async function AgentDetailPage({ params }: PageProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* OpenClaw integration */}
+          <OpenClawBadge agentSlug={agent.slug} agentId={agent.id} />
         </div>
       </div>
     </div>

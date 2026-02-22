@@ -121,4 +121,19 @@
 
 ---
 
-## 🎉 ALL PHASES COMPLETE
+## Phase 8: OpenClaw Integration ✅ COMPLETE
+- [x] OpenClaw skill generator service (agent → SKILL.md conversion)
+- [x] Skill export API route (GET /api/agents/[agentId]/export — returns SKILL.md)
+- [x] Export button on developer dashboard (download + copy SKILL.md)
+- [x] Webhook execution endpoint (POST /api/agents/[agentId]/webhook — OpenClaw → agent bridge)
+- [x] API key management (generate/revoke per-tenant keys for external access)
+- [x] API key auth middleware (validate X-API-Key header on webhook routes)
+- [x] "Works with OpenClaw" badge on agent detail page
+- [x] OpenClaw install command display (clawhub install snippet per agent)
+- [x] Agent detail page integration section (setup guide + config snippet)
+- [x] API key management dashboard (/dashboard/api-keys — create, copy, revoke)
+- [x] Decisions D048–D054 documented
+
+---
+
+## 🎉 PHASES 1–8 COMPLETE

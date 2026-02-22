@@ -12,7 +12,7 @@ import {
   UserButton,
   useUser,
 } from "@clerk/nextjs";
-import { Bot, BarChart3, CreditCard, Gift, LayoutDashboard, Settings, Shield, Store, Tag, Zap } from "lucide-react";
+import { Bot, BarChart3, CreditCard, Gift, Key, LayoutDashboard, Settings, Shield, Store, Tag, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,12 @@ export function Header() {
       href: "/dashboard/agents",
       label: "Developer",
       icon: LayoutDashboard,
+      show: onboardingComplete && (role === "DEVELOPER" || role === "ADMIN"),
+    },
+    {
+      href: "/dashboard/api-keys",
+      label: "API Keys",
+      icon: Key,
       show: onboardingComplete && (role === "DEVELOPER" || role === "ADMIN"),
     },
     {
