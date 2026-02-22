@@ -46,9 +46,13 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  // Check if user has completed onboarding (has metadata.onboardingComplete)
+  // Check if user has completed onboarding.
+  // Primary: JWT sessionClaims.metadata.onboardingComplete
+  // Fallback: "onboarding_complete" cookie (bridges the gap while Clerk JWT refreshes)
   const metadata = sessionClaims?.metadata as Record<string, unknown> | undefined;
-  const onboardingComplete = metadata?.onboardingComplete === true;
+  const jwtOnboarded = metadata?.onboardingComplete === true;
+  const cookieOnboarded = request.cookies.get("onboarding_complete")?.value === "1";
+  const onboardingComplete = jwtOnboarded || cookieOnboarded;
   const isOnboardingRoute =
     request.nextUrl.pathname === "/onboarding" ||
     request.nextUrl.pathname === "/api/onboarding";
@@ -60,11 +64,13 @@ export default clerkMiddleware(async (auth, request) => {
 
   // If onboarding is complete and user is on /onboarding, redirect away
   if (onboardingComplete && isOnboardingRoute) {
-    return NextResponse.redirect(new URL("/agents", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // Enforce role-based access for protected route groups.
-  const role = metadata?.role as SessionRole | undefined;
+  // Read role from JWT claims first, fall back to cookie
+  const cookieRole = request.cookies.get("onboarding_role")?.value as SessionRole | undefined;
+  const role = (metadata?.role as SessionRole | undefined) ?? cookieRole;
   const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
 
   if (isAdminRoute(request) && role !== "ADMIN") {

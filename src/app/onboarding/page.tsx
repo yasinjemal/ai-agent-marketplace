@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Building2, Code2, Loader2, ShoppingBag } from "lucide-react";
@@ -40,6 +40,16 @@ export default function OnboardingPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Check if user already has onboarding metadata (handles stale JWT scenario).
+  // If Clerk publicMetadata shows onboarded but the JWT hasn't refreshed,
+  // the cookie set by the API will handle it on the next hard redirect.
+  useEffect(() => {
+    const meta = user?.publicMetadata as Record<string, unknown> | undefined;
+    if (meta?.onboardingComplete) {
+      window.location.href = "/agents";
+    }
+  }, [user]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -64,13 +74,12 @@ export default function OnboardingPage() {
 
       if (data.success) {
         toast.success("Welcome aboard! 🎉");
-        // Force session refresh to pick up new metadata
-        await user?.reload();
-        // Redirect based on role
+        // Hard redirect to force the middleware to get a fresh Clerk JWT
+        // with the updated publicMetadata (onboardingComplete, role, etc.)
         if (selectedRole === "DEVELOPER") {
-          router.push("/dashboard/agents");
+          window.location.href = "/dashboard";
         } else {
-          router.push("/agents");
+          window.location.href = "/dashboard";
         }
       } else {
         toast.error(data.error?.message ?? "Something went wrong");

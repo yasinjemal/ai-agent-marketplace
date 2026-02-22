@@ -12,7 +12,7 @@ import {
   UserButton,
   useUser,
 } from "@clerk/nextjs";
-import { Bot, BarChart3, CreditCard, Gift, Key, LayoutDashboard, Settings, Shield, Store, Tag, Zap } from "lucide-react";
+import { Bot, BarChart3, LayoutDashboard, Shield, Store, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -22,41 +22,35 @@ export function Header() {
 
   // Get role from Clerk public metadata
   const metadata = user?.publicMetadata as Record<string, unknown> | undefined;
-  const role = metadata?.role as string | undefined;
-  const onboardingComplete = metadata?.onboardingComplete === true;
+  const clerkRole = metadata?.role as string | undefined;
+  const clerkOnboarded = metadata?.onboardingComplete === true;
+
+  // Fallback: read cookies (bridges Clerk JWT propagation delay)
+  const cookieRole =
+    typeof document !== "undefined"
+      ? document.cookie
+          .split("; ")
+          .find((c) => c.startsWith("onboarding_role="))
+          ?.split("=")[1]
+      : undefined;
+  const cookieOnboarded =
+    typeof document !== "undefined"
+      ? document.cookie
+          .split("; ")
+          .some((c) => c === "onboarding_complete=1")
+      : false;
+
+  const role = clerkRole ?? cookieRole;
+  const onboardingComplete = clerkOnboarded || cookieOnboarded;
 
   // Build nav links based on role
   const navLinks = [
     { href: "/agents", label: "Marketplace", icon: Store, show: true },
     { href: "/pricing", label: "Pricing", icon: Tag, show: true },
     {
-      href: "/dashboard/agents",
-      label: "Developer",
+      href: "/dashboard",
+      label: "Dashboard",
       icon: LayoutDashboard,
-      show: onboardingComplete && (role === "DEVELOPER" || role === "ADMIN"),
-    },
-    {
-      href: "/dashboard/api-keys",
-      label: "API Keys",
-      icon: Key,
-      show: onboardingComplete && (role === "DEVELOPER" || role === "ADMIN"),
-    },
-    {
-      href: "/dashboard/billing",
-      label: "Billing",
-      icon: CreditCard,
-      show: onboardingComplete && isSignedIn,
-    },
-    {
-      href: "/dashboard/executions",
-      label: "Executions",
-      icon: Zap,
-      show: onboardingComplete && isSignedIn,
-    },
-    {
-      href: "/dashboard/referrals",
-      label: "Referrals",
-      icon: Gift,
       show: onboardingComplete && isSignedIn,
     },
     {
@@ -70,12 +64,6 @@ export function Header() {
       label: "Analytics",
       icon: BarChart3,
       show: onboardingComplete && role === "ADMIN",
-    },
-    {
-      href: "/dashboard/settings",
-      label: "Settings",
-      icon: Settings,
-      show: onboardingComplete && isSignedIn,
     },
   ];
 

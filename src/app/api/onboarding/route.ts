@@ -49,16 +49,47 @@ export async function POST(request: NextRequest) {
 
     const { businessName, role } = parseResult.data;
 
-    // Check if user already exists
+    // Check if user already exists — if so, sync Clerk metadata and return
     const existingUser = await db.user.findUnique({
       where: { clerkId },
+      include: { tenant: { select: { id: true } } },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { success: false, error: { code: "CONFLICT", message: "User already onboarded" } } satisfies ApiResponse<never>,
-        { status: 409 },
+      // User exists in DB but Clerk metadata may be out of sync — fix it
+      try {
+        const client = await clerkClient();
+        await client.users.updateUserMetadata(clerkId, {
+          publicMetadata: {
+            onboardingComplete: true,
+            role: existingUser.role,
+            tenantId: existingUser.tenant.id,
+            dbUserId: existingUser.id,
+          },
+        });
+      } catch (metaError) {
+        console.error("[POST /api/onboarding] Clerk metadata sync failed:", metaError);
+      }
+
+      // Set cookies so middleware can bypass stale JWT claims
+      const response = NextResponse.json(
+        {
+          success: true,
+          data: {
+            userId: existingUser.id,
+            tenantId: existingUser.tenant.id,
+            role: existingUser.role,
+          },
+        } satisfies ApiResponse<{
+          userId: string;
+          tenantId: string;
+          role: string;
+        }>,
+        { status: 200 },
       );
+      response.cookies.set("onboarding_complete", "1", { path: "/", httpOnly: false, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+      response.cookies.set("onboarding_role", existingUser.role, { path: "/", httpOnly: false, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+      return response;
     }
 
     // Get Clerk user data (with retry for transient network errors)
@@ -146,7 +177,8 @@ export async function POST(request: NextRequest) {
       // Still return success — the user is created in DB, metadata can be synced later
     }
 
-    return NextResponse.json(
+    // Set cookies so middleware can bypass stale JWT claims immediately
+    const response = NextResponse.json(
       {
         success: true,
         data: {
@@ -161,6 +193,9 @@ export async function POST(request: NextRequest) {
       }>,
       { status: 201 },
     );
+    response.cookies.set("onboarding_complete", "1", { path: "/", httpOnly: false, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+    response.cookies.set("onboarding_role", role, { path: "/", httpOnly: false, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+    return response;
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     const errStack = error instanceof Error ? error.stack : undefined;

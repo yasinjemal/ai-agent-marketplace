@@ -34,7 +34,9 @@ export default async function AgentsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Filters bar */}
-      <AgentFilters />
+      <Suspense fallback={<div className="h-10 animate-pulse rounded-lg bg-muted" />}>
+        <AgentFilters />
+      </Suspense>
 
       {/* Agent grid */}
       <Suspense
