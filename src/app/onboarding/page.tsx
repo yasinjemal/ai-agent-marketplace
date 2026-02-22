@@ -41,12 +41,27 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Check if user already has onboarding metadata (handles stale JWT scenario).
-  // If Clerk publicMetadata shows onboarded but the JWT hasn't refreshed,
-  // the cookie set by the API will handle it on the next hard redirect.
+  // If Clerk publicMetadata shows onboarded but the middleware doesn't know yet,
+  // call the API to set the bridge cookies, then redirect to dashboard.
   useEffect(() => {
     const meta = user?.publicMetadata as Record<string, unknown> | undefined;
     if (meta?.onboardingComplete) {
-      window.location.href = "/agents";
+      // Call the onboarding API to set bridge cookies (it detects existing user and sets them)
+      const syncRole = meta.role === "DEVELOPER" ? "DEVELOPER" : "BUSINESS_USER";
+      fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessName: "sync",
+          role: syncRole,
+        }),
+      })
+        .then(() => {
+          window.location.href = "/dashboard";
+        })
+        .catch(() => {
+          window.location.href = "/dashboard";
+        });
     }
   }, [user]);
 
